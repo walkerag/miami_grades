@@ -441,14 +441,9 @@ ggplot(data=resid,aes(x=resid)) + geom_density(col="maroon",lwd=2) +
 
 
 gy.6<-readRDS(file=paste0(mod_path,"beta_mod.rds"))
-train_dat<-readRDS(file=paste0(mod_path,"train_dat.rds"))
 test_dat<-readRDS(file=paste0(mod_path,"test_dat.rds"))
 
-#Look at test data only
-
-####################
 #HONORS FLAG
-####################
 
 #Make a copy
 test_set<-test_dat
@@ -484,9 +479,8 @@ ggplot(data=test_set,aes(x=change)) + geom_density(col="dodgerblue",lwd=2) +
         ,axis.title.y=element_text(margin=margin(0,10,0,0)) 
         ,axis.title.x=element_text(margin=margin(10,0,0,0))) 
 
-####################
+
 #NEW PROFESSOR
-####################
 
 #Make a copy
 test_set<-test_dat
@@ -522,11 +516,8 @@ ggplot(data=test_set,aes(x=change)) + geom_density(col="dodgerblue",lwd=2) +
         ,axis.title.y=element_text(margin=margin(0,10,0,0)) 
         ,axis.title.x=element_text(margin=margin(10,0,0,0))) 
 
-htmlTable(summary(gy.6))
 
-####################
 #TEN YEAR JUMP
-####################
 
 #Make a copy
 test_set<-test_dat
@@ -562,4 +553,65 @@ ggplot(data=test_set,aes(x=change)) + geom_density(col="dodgerblue",lwd=2) +
         ,axis.title.x=element_text(margin=margin(10,0,0,0))) 
 #Mean 0.018
 
+
+#FIRST YEAR OF CLASS
+
+#Make a copy
+test_set<-test_dat
+#Flip flag
+test_set$first_year_flag<-abs(test_set$first_year_flag-1)
+#Get new predictions
+test_set$pred_flip<-5
+test_set[1:10000,"pred_flip"] <- predict(gy.6,newdata=test_set[1:10000,])
+test_set[10000:20000,"pred_flip"] <- predict(gy.6,newdata=test_set[10000:20000,])
+test_set[20000:30000,"pred_flip"] <- predict(gy.6,newdata=test_set[20000:30000,])
+test_set[30000:40000,"pred_flip"] <- predict(gy.6,newdata=test_set[30000:40000,])
+test_set[40000:50000,"pred_flip"] <- predict(gy.6,newdata=test_set[40000:50000,])
+test_set[50000:60000,"pred_flip"] <- predict(gy.6,newdata=test_set[50000:60000,])
+test_set[60000:70000,"pred_flip"] <- predict(gy.6,newdata=test_set[60000:70000,])
+test_set[70000:80000,"pred_flip"] <- predict(gy.6,newdata=test_set[70000:80000,])
+test_set[80000:dim(test_set)[1],"pred_flip"] <- predict(gy.6,newdata=test_set[80000:dim(test_set)[1],])
+summary(test_set$pred_flip)
+
+#Keep non first year originally
+test_set<-test_set[test_set$first_year_flag==1,]
+
+#Get difference, multiply by 4 to get in GPA scale
+test_set$change<-(test_set$pred_flip-test_set$pred)*4
 summary(test_set$change)
+
+#Plot change in predictions
+ggplot(data=test_set,aes(x=change)) + geom_density(col="dodgerblue",lwd=2) +
+  scale_x_continuous(limits=c(-1,1),breaks=c(-1,0,1)) +
+  ggtitle("First Year Course Estimated GPA Effect") +
+  ylab("Density") +
+  xlab("Change in Predicted GPA: Non-First to First") +
+  theme(text = element_text(size = 26,family="Trebuchet MS")
+        ,axis.title.y=element_text(margin=margin(0,10,0,0)) 
+        ,axis.title.x=element_text(margin=margin(10,0,0,0))) 
+
+#Coefficient table for post
+tab<-NULL
+tab<-round(data.frame(coefs=x$coefficients$mean[1:14,1]),5)
+tab$se<-round(x$coefficients$mean[1:14,2],5)
+tab$pval<-round(x$coefficients$mean[1:14,4],5)
+tab$VariableName<-rownames(tab)
+tab$Description<-c(
+  'Intercept'
+  ,'Course Year (2000-2016), coded as 1-17'
+  ,'Total students receiving grade'
+  ,'Course Level (100-700), coded as 1-7'
+  ,'Course taught in Luxembourg'
+  ,'Laboratory course'
+  ,'Honors course'
+  ,'Spring semester'
+  ,'Summer semester'
+  ,'Winter semester'
+  ,'Course had multiple sections in the semester'
+  ,'First year for course'
+  ,'First year for professor'
+  ,'Total sections offered for course'
+)
+tab<-subset(tab,select=c(VariableName,Description,coefs,se,pval))
+head(tab,n=20)
+htmlTable(tab,rnames=FALSE)
